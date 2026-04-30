@@ -141,6 +141,45 @@ RR_REFLECT_LLM_PROVIDER=openai
 
 ---
 
+## 作为 Agent Skill 使用
+
+RealResearch 不仅是独立的 CLI 工具，还可以作为 **Skill** 集成到各种 AI Agent 中，让 Agent 具备深度研究能力。
+
+### 什么是 Skill？
+
+Skill 是一种可复用的能力模块。Agent 通过调用 Skill，可以获得超出其自身知识范围的专业能力。RealResearch 就是一个"深度研究 Skill"——给 Agent 一个研究问题，它能自动搜索、分析、记忆、迭代，最终输出结构化报告。
+
+### 支持的 Agent 平台
+
+| 平台 | 集成方式 |
+|------|---------|
+| **Claude Code** | 将 `SKILL.md` 放入 `.claude/skills/` 目录，Claude 会自动识别并调用 |
+| **其他支持 Skill 的 Agent** | 将 `SKILL.md` 作为能力描述文件，Agent 根据指引调用 CLI 工具 |
+
+### 集成示例（Claude Code）
+
+```bash
+# 将 RealResearch 注册为 Claude Code 的 Skill
+cp SKILL.md ~/.claude/skills/real-research.md
+```
+
+之后在 Claude Code 中，只需说：
+
+```
+帮我深度研究一下 2026 年国产 AI 算力产业链
+```
+
+Claude 会自动按照 SKILL.md 中定义的螺旋工作流，调用 `rr-search`、`rr-retain`、`rr-recall`、`rr-reflect` 等工具完成研究。
+
+### 为什么用 Skill？
+
+- **标准化工作流**：SKILL.md 定义了完整的研究流程（8 个阶段），Agent 不会遗漏步骤
+- **持久化记忆**：研究结果存入 Hindsight，下次研究同领域可直接复用
+- **可复用**：同一个 Skill 可以被不同 Agent、不同项目调用
+- **可迭代**：升级 RealResearch 代码，所有使用该 Skill 的 Agent 自动获得新能力
+
+---
+
 ## 项目结构
 
 ```
