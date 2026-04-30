@@ -19,9 +19,15 @@ RealResearch 是一套面向深度研究（Deep Research）场景的 CLI 工具�
 │                    RealResearch CLI 层                            │
 │                                                                  │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │rr-search │ │rr-fetch  │ │rr-retain │ │rr-recall │  ...      │
+│  │rr-search │ │rr-fetch  │ │rr-retain │ │rr-recall │           │
 │  │ 网页搜索  │ │ 网页抓取  │ │ 存入记忆  │ │ 检索记忆  │           │
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘           │
+│       │            │            │            │                   │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                  │
+│  │rr-tushare- │ │rr-tushare- │ │rr-tushare- │  ...             │
+│  │index       │ │search      │ │fetch       │                   │
+│  │ 研报索引    │ │ 研报搜索    │ │ 研报蒸馏    │                   │
+│  └────┬───────┘ └────┬───────┘ └────┬───────┘                  │
 │       │            │            │            │                   │
 │  ┌────┴────────────┴────────────┴────────────┴────┐             │
 │  │              Hindsight MemoryEngine              │             │
@@ -183,34 +189,7 @@ RealResearch 同时支持两个搜索通道，互补使用：
 
 模型根据研报内容和研究主题自行判断哪些维度最重要，不被固定模板限制。比如研究"煤化工设备供应商"时，模型会自动选择"下游龙头企业动态"这个维度，分析客户的资本开支对设备需求的影响。
 
-### 5. 非侵入式兼容层
-
-RealResearch 通过 **monkey-patch** 解决 LLM 模型与 Hindsight 的兼容性问题，不修改任何 Hindsight 源代码。
-
-以 MiMo 模型为例：MiMo 在 fact extraction 时会把 JSON schema 定义本身当作回复返回，而不是提取实际数据。这是因为 Hindsight 使用"软约束"方式（把 schema 以文本形式拼接到 system prompt），MiMo 对 prompt 的理解方式与其他模型不同。
-
-解决方案是在 OpenAI 客户端的 `AsyncCompletions.create` 方法上 hook，在请求发出前追加一段澄清说明，告诉模型要提取实际数据而不是返回 schema 定义。
-
-```python
-# 伪代码示意
-_async_original_create = AsyncCompletions.create
-
-async def _patched_create(self, **kwargs):
-    if "mimo" in model_name:
-        # 追加澄清：要提取数据，不要返回 schema
-        system_prompt += clarification
-    return await _async_original_create(self, **kwargs)
-
-AsyncCompletions.create = _patched_create
-```
-
-这种设计的好处：
-- **零侵入**：不修改 Hindsight 任何源文件
-- **可逆**：删除 `engine.py` 中的 patch 代码即可恢复
-- **精准**：只对特定模型生效，不影响其他模型
-- **可维护**：Hindsight 升级时不会冲突
-
-### 6. 记忆库（Bank）隔离
+### 5. 记忆库（Bank）隔离
 
 不同研究方向的记忆存储在独立的 **Bank** 中，互不干扰：
 
@@ -225,7 +204,7 @@ Bank: crypto-markets     → 加密货币研究的所有记忆
 - `rr-route` 可以根据查询自动路由到最匹配的 Bank
 - 相关子主题可以共享同一个 Bank，便于交叉引用
 
-### 7. 全链路日志
+### 6. 全链路日志
 
 每次研究会话自动记录每个步骤的输入、输出、耗时、token 消耗：
 
@@ -408,7 +387,7 @@ Claude 会自动按照 SKILL.md 中定义的螺旋工作流，调用 `rr-search`
 ```
 RealResearch/
 ├── real_research/              # Python 源码
-│   ├── engine.py               # MemoryEngine 生命周期 + 非侵入式兼容层
+│   ├── engine.py               # MemoryEngine 生命周期
 │   ├── config.py               # RR_* 统一配置读取
 │   ├── search.py               # rr-search（网页搜索）
 │   ├── fetch.py                # rr-fetch（网页抓取）
