@@ -327,6 +327,8 @@ rr-retain -c "..." -b coal-chem --context "Spiral 2"
 rr-reflect -q "煤化工设备供应和工程服务企业分析" -b coal-chem --budget high
 ```
 
+> 更多实际研究案例，见 [EXAMPLES.md](EXAMPLES.md)——包含中国国产 AI 芯片（875 条记忆）和全球 AI 硬件（242 条记忆）两个完整研究项目的详细拆解。
+
 ---
 
 ## 可选配置
@@ -410,6 +412,7 @@ RealResearch/
 ├── pyproject.toml              # 项目配置 + CLI 入口点
 ├── .env.example                # 配置模板
 ├── SKILL.md                    # Agent 工作流指南
+├── EXAMPLES.md                 # 研究实例详解
 └── README.md                   # 本文件
 ```
 
