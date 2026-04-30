@@ -6,6 +6,245 @@ RealResearch 是一套面向深度研究（Deep Research）场景的 CLI 工具�
 
 ---
 
+## 技术架构总览
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Agent / User                              │
+│                    （Claude Code 或其他 Agent）                    │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ 调用 CLI 工具
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    RealResearch CLI 层                            │
+│                                                                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │rr-search │ │rr-fetch  │ │rr-retain │ │rr-recall │  ...      │
+│  │ 网页搜索  │ │ 网页抓取  │ │ 存入记忆  │ │ 检索记忆  │           │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘           │
+│       │            │            │            │                   │
+│  ┌────┴────────────┴────────────┴────────────┴────┐             │
+│  │              Hindsight MemoryEngine              │             │
+│  │                                                  │             │
+│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐     │             │
+│  │  │ Fact      │ │ Entity    │ │ Vector    │     │             │
+│  │  │ Extraction│ │ Graph     │ │ Search    │     │             │
+│  │  └───────────┘ └───────────┘ └───────────┘     │             │
+│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐     │             │
+│  │  │ BM25      │ │ Temporal  │ │ Reranker  │     │             │
+│  │  │ Search    │ │ Search    │ │ (Cohere)  │     │             │
+│  │  └───────────┘ └───────────┘ └───────────┘     │             │
+│  └──────────────────────┬──────────────────────────┘             │
+│                         │                                        │
+└─────────────────────────┼────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      PostgreSQL + pgvector                        │
+│              （持久化存储：facts、entities、embeddings）             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 核心技术原理
+
+### 1. 螺旋研究法（Spiral Methodology）
+
+传统研究是**线性**的：搜索 → 阅读 → 写报告，一次性完成，没有记忆。
+
+RealResearch 是**螺旋**的：每一轮研究都在已有知识基础上推进，像螺旋楼梯一样逐层上升。
+
+```
+        第 3 轮：交叉验证 + 深挖细节
+       ╱
+      ╱   第 2 轮：定向填补缺口
+     ╱   ╱
+    ╱   ╱   第 1 轮：从零开始搜索
+   ╱   ╱   ╱
+  ╱   ╱   ╱
+ ╱   ╱   ╱
+━━━━━━━━━━━━━━  → 知识库持续增长
+```
+
+**为什么叫"螺旋"？** 因为每一轮都会回到同一个研究主题，但视角更深、信息更全。第 1 轮搜索"煤化工设备市场规模"，第 2 轮基于已有知识搜索"煤化工设备国产化率"，第 3 轮发现矛盾后搜索"煤化工设备技术壁垒"。每一轮都在上一轮的基础上推进。
+
+**8 个阶段：**
+
+| 阶段 | 名称 | 做什么 | 核心工具 |
+|------|------|--------|---------|
+| Phase 0 | Initialize | 环境检查、更新研报索引 | `rr-env-check`, `rr-tushare-index` |
+| Phase 1 | Grounding | 回忆已有知识，找到起点 | `rr-recall` |
+| Phase 2 | Gap Analysis | 分析知识缺口，制定搜索计划 | LLM 推理 |
+| Phase 3 | Deep Search | 双通道搜索（网页 + 研报） | `rr-search`, `rr-tushare-search` |
+| Phase 4 | Immediate Retain | 立即存储发现，不等到最后 | `rr-retain` |
+| Phase 5 | Connection Recall | 再次回忆，发现交叉关联 | `rr-recall` |
+| Phase 6 | Convergence Check | 判断继续还是收敛 | LLM 推理 |
+| Phase 7 | Reflect | 综合分析所有记忆 | `rr-reflect` |
+| Phase 8 | Final Report | 生成结构化报告 | `rr-report` |
+
+### 2. 记忆引擎：Hindsight
+
+RealResearch 的记忆能力来自 [Hindsight](https://github.com/vectorize-io/hindsight)——一个仿生学的 AI 记忆系统。
+
+#### 记忆的结构
+
+Hindsight 不是简单地存储文本，而是将信息分解为结构化的 **Fact**（事实）：
+
+```
+输入文本："中国化学2025年营收1895亿元，新签合同额首次突破4000亿元。"
+    ↓ LLM 提取
+Fact 1: {
+    what: "中国化学2025年营收1895亿元",
+    when: "2025年",
+    where: "N/A",
+    who: "中国化学",
+    fact_type: "world"
+}
+Fact 2: {
+    what: "新签合同额首次突破4000亿元",
+    when: "2025年",
+    where: "N/A",
+    who: "中国化学",
+    fact_type: "world"
+}
+```
+
+#### 记忆的检索
+
+`rr-recall` 使用 **4 路并行检索** + **重排序**：
+
+| 检索策略 | 原理 | 擅长 |
+|---------|------|------|
+| **语义检索** | 向量相似度（pgvector） | "算力需求" 能匹配到 "AI芯片出货量" |
+| **BM25 关键词** | 词频匹配 | 精确名词匹配，如公司名、产品型号 |
+| **实体图谱** | 实体关联扩展 | 找到与"华为"相关的所有记忆 |
+| **时间检索** | 时间范围过滤 | "最近一个月的发现" |
+
+4 路结果通过 **Reciprocal Rank Fusion** 融合，再用 **Cohere Reranker** 重排序，返回最相关的结果。
+
+#### 记忆的反思
+
+`rr-reflect` 不是简单的总结，而是**结构化推理**：
+
+```
+输入：所有已存储的 memories
+    ↓
+LLM 分析：
+- 核心发现有哪些？
+- 有哪些矛盾？如何解决？
+- 实体之间有什么关联？
+- 哪些信息可信度高/低？
+    ↓
+输出：结构化反思报告（reflect.json + reflect.md）
+```
+
+### 3. 双通道搜索
+
+RealResearch 同时支持两个搜索通道，互补使用：
+
+#### 通道 1：网页搜索（Tavily）
+
+- **优势**：实时性强，覆盖新闻、博客、论坛、官网
+- **工具链**：`rr-search` → `rr-fetch`
+- **适用**：最新动态、政策变化、市场情绪
+
+#### 通道 2：研报搜索（Tushare）
+
+- **优势**：专业深度，7000+ 篇券商研报，结构化数据
+- **工具链**：`rr-tushare-index` → `rr-tushare-search` → `rr-tushare-fetch`
+- **适用**：行业分析、公司财务、估值逻辑
+
+两个通道的数据统一经过 `rr-retain` 存入 Hindsight，形成完整的知识库。
+
+### 4. 研报智能蒸馏
+
+研报 PDF 通常 50-100KB，直接存入记忆系统会导致噪声过大、语义碎片化。RealResearch 采用**分层蒸馏**策略：
+
+```
+研报 PDF（50-100KB）
+    ↓ rr-tushare-fetch --topic "研究主题"
+    ↓
+┌─────────────────────────────────────┐
+│ Layer 1: 摘要层（搜索结果自带）      │  ← 即时可用，~500字
+├─────────────────────────────────────┤
+│ Layer 2: 结构化洞察（LLM 蒸馏）      │  ← 存入记忆，~2-3KB
+│   必选：核心观点/关键数据/投资建议/风险│
+│   自由：模型根据内容自选维度          │
+├─────────────────────────────────────┤
+│ Layer 3: 全文存文件（--save）         │  ← 本地参考，50-100KB
+└─────────────────────────────────────┘
+```
+
+**蒸馏模板设计**：采用"必选维度 + 自由维度"的灵活结构。
+
+- **必选维度**（每篇都有）：核心观点、关键数据、投资建议、风险提示
+- **自由维度**（模型自选）：产业链分析、竞争格局、订单/合同、产能利用率、政策因素等
+
+模型根据研报内容和研究主题自行判断哪些维度最重要，不被固定模板限制。比如研究"煤化工设备供应商"时，模型会自动选择"下游龙头企业动态"这个维度，分析客户的资本开支对设备需求的影响。
+
+### 5. 非侵入式兼容层
+
+RealResearch 通过 **monkey-patch** 解决 LLM 模型与 Hindsight 的兼容性问题，不修改任何 Hindsight 源代码。
+
+以 MiMo 模型为例：MiMo 在 fact extraction 时会把 JSON schema 定义本身当作回复返回，而不是提取实际数据。这是因为 Hindsight 使用"软约束"方式（把 schema 以文本形式拼接到 system prompt），MiMo 对 prompt 的理解方式与其他模型不同。
+
+解决方案是在 OpenAI 客户端的 `AsyncCompletions.create` 方法上 hook，在请求发出前追加一段澄清说明，告诉模型要提取实际数据而不是返回 schema 定义。
+
+```python
+# 伪代码示意
+_async_original_create = AsyncCompletions.create
+
+async def _patched_create(self, **kwargs):
+    if "mimo" in model_name:
+        # 追加澄清：要提取数据，不要返回 schema
+        system_prompt += clarification
+    return await _async_original_create(self, **kwargs)
+
+AsyncCompletions.create = _patched_create
+```
+
+这种设计的好处：
+- **零侵入**：不修改 Hindsight 任何源文件
+- **可逆**：删除 `engine.py` 中的 patch 代码即可恢复
+- **精准**：只对特定模型生效，不影响其他模型
+- **可维护**：Hindsight 升级时不会冲突
+
+### 6. 记忆库（Bank）隔离
+
+不同研究方向的记忆存储在独立的 **Bank** 中，互不干扰：
+
+```
+Bank: china-gpu          → 国产 GPU 研究的所有记忆
+Bank: coal-chem          → 煤化工研究的所有记忆
+Bank: crypto-markets     → 加密货币研究的所有记忆
+```
+
+- 每个 Bank 有独立的 facts、entities、embeddings
+- `rr-recall` 只在指定 Bank 内检索
+- `rr-route` 可以根据查询自动路由到最匹配的 Bank
+- 相关子主题可以共享同一个 Bank，便于交叉引用
+
+### 7. 全链路日志
+
+每次研究会话自动记录每个步骤的输入、输出、耗时、token 消耗：
+
+```
+Logs/sessions/
+├── abc123/
+│   ├── session.json          # 会话元数据
+│   ├── step_001_search.json  # 第 1 步：搜索
+│   ├── step_002_retain.json  # 第 2 步：存储
+│   ├── step_003_recall.json  # 第 3 步：检索
+│   └── ...
+└── def456/
+    └── ...
+```
+
+支持事后复盘：哪些搜索查询效果好、哪些研报最有价值、token 消耗分布等。
+
+---
+
 ## 快速启动（3 步）
 
 ### 1. 克隆 Hindsight 引擎
@@ -82,28 +321,12 @@ rr-env-check
 | `rr-route` | 智能路由 | `rr-route -q "AI芯片"` |
 | `rr-tushare-index` | 研报索引构建 | `rr-tushare-index --months 3` |
 | `rr-tushare-search` | 研报搜索 | `rr-tushare-search -q "半导体" --industry "电子"` |
-| `rr-tushare-fetch` | 研报 PDF 转 Markdown | `rr-tushare-fetch --url "..." --topic "研究主题" --save ./report.md` |
+| `rr-tushare-fetch` | 研报蒸馏 | `rr-tushare-fetch --url "..." --topic "主题" --save ./report.md` |
 | `rr-log` | 查看研究日志 | `rr-log list`, `rr-log show <session-id>` |
 
 ---
 
-## 螺旋研究工作流
-
-RealResearch 的核心思想是**螺旋式深度研究**——每一轮研究都不是从零开始，而是基于已有知识继续深入。
-
-```
-Phase 0: Initialize     → 环境检查、更新研报索引
-Phase 1: Grounding      → 回忆已有知识（rr-recall）
-Phase 2: Gap Analysis   → 分析知识缺口，制定搜索计划
-Phase 3: Deep Search    → 双通道搜索（网页 + 研报）
-Phase 4: Immediate Retain → 立即存储发现（rr-retain）
-Phase 5: Connection Recall → 再次回忆，发现交叉关联
-Phase 6: Convergence Check → 判断继续深入还是收敛
-Phase 7: Reflect        → 综合分析所有记忆（rr-reflect）
-Phase 8: Final Report   → 生成最终报告（rr-report）
-```
-
-### 示例
+## 使用示例
 
 ```bash
 # 创建研究库
@@ -185,7 +408,7 @@ Claude 会自动按照 SKILL.md 中定义的螺旋工作流，调用 `rr-search`
 ```
 RealResearch/
 ├── real_research/              # Python 源码
-│   ├── engine.py               # MemoryEngine 生命周期 + MiMo 兼容修复
+│   ├── engine.py               # MemoryEngine 生命周期 + 非侵入式兼容层
 │   ├── config.py               # RR_* 统一配置读取
 │   ├── search.py               # rr-search（网页搜索）
 │   ├── fetch.py                # rr-fetch（网页抓取）
@@ -208,18 +431,6 @@ RealResearch/
 ├── SKILL.md                    # Agent 工作流指南
 └── README.md                   # 本文件
 ```
-
----
-
-## 技术特色
-
-- **螺旋研究**：每轮基于已有知识，逐步深入
-- **双通道搜索**：网页实时性 + 研报专业性
-- **智能蒸馏**：必选 + 自由维度，LLM 自适应提取研报洞察
-- **持久记忆**：跨会话、跨研究方向的知识积累
-- **实体图谱**：自动关联实体，发现隐藏关系
-- **非侵入式**：不修改 Hindsight 源码，通过 monkey-patch 兼容
-- **全链路日志**：每步操作可追溯、可复盘
 
 ---
 
