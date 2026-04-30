@@ -8,6 +8,8 @@ RealResearch 是一套面向深度研究（Deep Research）场景的 CLI 工具�
 
 ## 技术架构总览
 
+![RealResearch 螺旋式深度研究框架](RealResearch_Architecture_v3_cn.png)
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Agent / User                              │
