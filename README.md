@@ -129,7 +129,7 @@ rr-reflect -q "煤化工设备供应和工程服务企业分析" -b coal-chem --
 
 ```bash
 # 使用外部 PostgreSQL（留空则自动启动 pg0-embedded）
-RR_DATABASE_URL=postgresql://user:pass@localhost:5432/hindsight
+RR_DATABASE_URL=postgresql://your_user:your_password@your_host:5432/your_database
 
 # 默认记忆库
 RR_DEFAULT_BANK=deep-research
