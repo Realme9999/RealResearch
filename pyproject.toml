@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "real-research"
+version = "0.1.0"
+description = "RealResearch — Spiral deep research with persistent memory, powered by Hindsight"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["research", "search", "memory", "ai", "agent", "skill"]
+
+dependencies = [
+    # ── RealResearch core ─────────────────────
+    "tavily-python>=0.5.0",
+    "tushare>=1.4.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+
+    # ── Hindsight API dependencies ────────────
+    "asyncpg>=0.29.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "sqlalchemy>=2.0.44",
+    "alembic>=1.17.1",
+    "pgvector>=0.4.1",
+    "psycopg2-binary>=2.9.11",
+    "tiktoken>=0.12.0",
+    "httpx>=0.27.0",
+    "python-dateutil>=2.8.0",
+    "dateparser>=1.2.2",
+    "cohere>=5.0.0",
+    "litellm>=1.83.0",
+    "rich>=13.0.0",
+    "langchain-text-splitters>=0.3.0",
+    "fastapi[standard]>=0.120.3",
+    "uvicorn>=0.38.0",
+    "greenlet>=3.2.4,<3.4.0",
+    "PyJWT[crypto]>=2.8.0",
+    "fastmcp>=3.2.0",
+    "python-multipart>=0.0.22",
+    "orjson>=3.11.6",
+    "google-genai>=1.0.0",
+    "google-auth>=2.0.0",
+    "anthropic>=0.40.0",
+    "typer>=0.9.0",
+    "markitdown>=0.1.4",
+    "obstore>=0.4.0",
+    "winloop>=0.1.0; sys_platform == 'win32'",
+    "uvloop>=0.22.1; sys_platform != 'win32'",
+    "boto3>=1.42.74",
+    # OpenTelemetry (required by Hindsight metrics)
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-exporter-prometheus>=0.41b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "opentelemetry-semantic-conventions>=0.41b0",
+]
+
+[project.optional-dependencies]
+embedded-db = ["pg0-embedded>=0.13.0"]
+
+[project.scripts]
+rr-search = "real_research.search:main"
+rr-fetch = "real_research.fetch:main"
+rr-retain = "real_research.retain:main"
+rr-recall = "real_research.recall:main"
+rr-reflect = "real_research.reflect:main"
+rr-report = "real_research.report:main"
+rr-bank = "real_research.bank:main"
+rr-route = "real_research.route:main"
+rr-env-check = "real_research.env_check:main"
+rr-tushare-index = "real_research.tushare_index:main"
+rr-tushare-search = "real_research.tushare_search:main"
+rr-tushare-fetch = "real_research.tushare_fetch:main"
+rr-log = "real_research.log_view:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["real_research"]
+
+[tool.uv]
+# Use explicit index for PyTorch to prevent the pytorch index from serving
+# non-pytorch packages with incompatible wheels
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

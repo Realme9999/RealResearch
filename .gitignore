@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+
+# Hindsight (separate project, clone separately)
+hindsightbase/
+
+# Logs
+Logs/
+
+# Research outputs
+Reports/
+reflect_chain.*
+
+# Test files
+test_mimo_extract.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large files
+*.zip
+*.tar.gz
+*.pdf
