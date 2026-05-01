@@ -3,6 +3,7 @@
 Usage:
     rr-stock-daily --code 688256 --start 2025-01-01 --end 2025-12-31
     rr-stock-daily --code 688256 --last 30
+    rr-stock-daily --code 688256 --last 30 --adj qfq   # 前复权
 """
 import argparse
 import json
@@ -92,12 +93,20 @@ def run_stock_daily(args) -> dict:
             start_date = _normalize_date(args.start)
             end_date = _normalize_date(args.end) if args.end else datetime.now().strftime("%Y%m%d")
 
-        # Fetch daily OHLCV
+        # Fetch daily OHLCV — use pro_bar for adjusted prices
+        adj = args.adj if args.adj else "none"
         time.sleep(0.3)
-        df_daily = pro.daily(
-            ts_code=ts_code, start_date=start_date, end_date=end_date,
-            fields=DAILY_FIELDS
-        )
+        if adj in ("qfq", "hfq"):
+            import tushare as ts
+            df_daily = ts.pro_bar(
+                ts_code=ts_code, start_date=start_date, end_date=end_date,
+                adj=adj, factors=["tor", "vr"]
+            )
+        else:
+            df_daily = pro.daily(
+                ts_code=ts_code, start_date=start_date, end_date=end_date,
+                fields=DAILY_FIELDS
+            )
 
         # Fetch daily_basic (valuation)
         time.sleep(0.3)
@@ -112,7 +121,7 @@ def run_stock_daily(args) -> dict:
                 "code": ts_code,
                 "name": name,
                 "data": [],
-                "meta": {"source": "tushare", "api": "daily+daily_basic", "count": 0, "period": f"{start_date}~{end_date}"},
+                "meta": {"source": "tushare", "api": "daily+daily_basic", "adj": adj, "count": 0, "period": f"{start_date}~{end_date}"},
             }
 
         records_daily = _df_to_records(df_daily)
@@ -144,6 +153,7 @@ def run_stock_daily(args) -> dict:
             "meta": {
                 "source": "tushare",
                 "api": "daily+daily_basic",
+                "adj": adj,
                 "count": len(merged),
                 "period": f"{start_date}~{end_date}",
             },
@@ -162,6 +172,7 @@ def main():
     parser.add_argument("--start", "-s", help="起始日期（YYYY-MM-DD或YYYYMMDD）")
     parser.add_argument("--end", "-e", help="结束日期（YYYY-MM-DD或YYYYMMDD）")
     parser.add_argument("--last", "-l", type=int, help="最近N个交易日（与start/end互斥）")
+    parser.add_argument("--adj", choices=["qfq", "hfq"], help="复权类型：qfq前复权，hfq后复权（默认不复权）")
     args = parser.parse_args()
 
     if not args.start and not args.last:
