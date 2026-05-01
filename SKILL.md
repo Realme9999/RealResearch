@@ -81,6 +81,9 @@ If not ready:
 | `rr-tushare-fetch` | Download and convert Tushare report PDFs to Markdown |
 | `rr-log` | View and manage research session logs |
 | `rr-detail` | Generate detailed material package for report writing |
+| `rr-stock-info` | 查询公司基本信息与最新估值（Tushare stock_basic + daily_basic） |
+| `rr-stock-daily` | 查询股价走势与交易数据（Tushare daily + daily_basic） |
+| `rr-stock-fina` | 查询财务报表：利润表/资产负债表/现金流量表（Tushare income/balancesheet/cashflow） |
 
 ## Research Workflow: The Spiral
 
@@ -133,6 +136,15 @@ rr-tushare-fetch --url "<pdf_url>" --topic "<research question>" --save ./report
 Filters for `rr-tushare-search`: `--industry`, `--org`, `--stock`, `--type`, `--start-date`, `--end-date`.
 
 When `--topic` is set, `rr-tushare-fetch` uses LLM to distill the report into structured insights (returned in `insights` field). Full markdown is saved to `--save` path. The `insights` field is ready for direct storage via `rr-retain`.
+
+**Raw data verification** — validate claims with Tushare financial data:
+```bash
+rr-stock-info --code <6位代码>                     # 公司基本面与估值
+rr-stock-daily --code <6位代码> --start 2025-01-01  # 股价走势
+rr-stock-fina --code <6位代码> --period 2025        # 财务报表（年报/季报）
+```
+
+Use raw data to cross-verify research report claims. For example, if a report says "公司首次盈利", use `rr-stock-fina` to verify the actual net income figure.
 
 **One tool per turn.** Fully analyze each result before the next step.
 
