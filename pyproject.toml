@@ -75,6 +75,7 @@ rr-tushare-index = "real_research.tushare_index:main"
 rr-tushare-search = "real_research.tushare_search:main"
 rr-tushare-fetch = "real_research.tushare_fetch:main"
 rr-log = "real_research.log_view:main"
+rr-detail = "real_research.detail:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["real_research"]

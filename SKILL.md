@@ -80,6 +80,7 @@ If not ready:
 | `rr-tushare-search` | Search Tushare research reports from index |
 | `rr-tushare-fetch` | Download and convert Tushare report PDFs to Markdown |
 | `rr-log` | View and manage research session logs |
+| `rr-detail` | Generate detailed material package for report writing |
 
 ## Research Workflow: The Spiral
 
@@ -190,6 +191,30 @@ rr-reflect --query "<original question with accumulated context>" --bank <bank-i
 
 `--output-file` generates both `reflect.json` and `reflect.md`.
 
+### Phase 7.5: Detail (Material Package)
+
+After reflect, generate a comprehensive material package that aggregates ALL relevant memories:
+
+```bash
+rr-detail --query "<original question>" --bank <bank-id> --output ./detail.md
+```
+
+This produces `detail.json` + `detail.md` containing:
+- **Reflect synthesis** — the reflect output embedded
+- **Core facts** — all recalled facts grouped by source/spiral
+- **Entity profiles** — top entities with aggregated facts and key data
+- **Data points** — extracted numeric data in table form
+- **Timeline** — events sorted by date
+- **Source statistics** — breakdown by data source type
+- **Cross-bank references** (optional: `--cross-bank`)
+
+**Use the detail material as the primary reference when writing the final report.** The detail output contains far more data than reflect alone — use it to write a comprehensive, data-rich report.
+
+Optional flags:
+- `--cross-bank` — search related banks for cross-references
+- `--no-reflect` — skip reflect synthesis (faster)
+- `--reflect-timeout 300` — set reflect timeout in seconds
+
 ### Phase 8: Final Report
 
 ```bash
@@ -217,6 +242,34 @@ rr-report --query "<original question>" --content "<full markdown report>"
 ## Knowledge Gaps (remaining)
 ## Sources
 ```
+
+**Enhanced report structure (recommended when using rr-detail):**
+```markdown
+# <Descriptive Title>
+
+## 一、行业/主题总览
+[宏观背景、市场规模、关键趋势]
+
+## 二、核心技术/关键环节
+[技术对比表、路线分析]
+
+## 三、主要参与者分析
+[每家公司/实体的独立分析，含财务数据表格]
+
+## 四、竞争格局
+[竞争格局表、市占率、壁垒分析]
+
+## 五、投资逻辑/关键洞察
+[核心观点、催化剂、时间线]
+
+## 六、风险提示
+[分条列出风险]
+
+## 数据来源
+[列出所有引用的研报、新闻、公告]
+```
+
+Use the detail material package (Phase 7.5) as the data foundation. The detail output contains all recalled facts, entity profiles, numeric data, and timeline — use these to write a data-rich report with specific numbers, company names, and source citations.
 
 ## Rules
 
