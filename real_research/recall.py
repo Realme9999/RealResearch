@@ -71,7 +71,7 @@ def main():
     tags = [t.strip() for t in args.tags.split(",")] if args.tags else None
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.query, bank_id=bank_id)
     if logger:
         logger.start_step("rr-recall", {"query": args.query, "bank_id": bank_id, "budget": args.budget, "tags": tags})
 

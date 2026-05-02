@@ -384,7 +384,7 @@ def main():
     args = parser.parse_args()
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.query)
     if logger:
         logger.start_step("rr-tushare-search", {
             "query": args.query, "mode": args.mode, "max_results": args.max_results,

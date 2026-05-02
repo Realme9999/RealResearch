@@ -81,9 +81,12 @@ If not ready:
 | `rr-tushare-fetch` | Download and convert Tushare report PDFs to Markdown |
 | `rr-log` | View and manage research session logs |
 | `rr-detail` | Generate detailed material package for report writing |
-| `rr-stock-info` | 查询公司基本信息与最新估值（Tushare stock_basic + daily_basic） |
-| `rr-stock-daily` | 查询股价走势与交易数据（Tushare daily + daily_basic） |
-| `rr-stock-fina` | 查询财务报表：利润表/资产负债表/现金流量表（Tushare income/balancesheet/cashflow） |
+| `rr-stock-info` | 查询公司基本信息与**最新不复权价格**与估值（stock_basic + daily_basic） |
+| `rr-stock-daily` | 查询股价走势与交易数据，支持**复权价格**（--adj qfq/hfq，默认不复权） |
+| `rr-stock-fina` | 查询财务报表：利润表/资产负债表/现金流量表 |
+| `rr-stock-chip` | 查询筹码分布与胜率（获利盘占比），分析套牢盘压力与筹码集中度 |
+| `rr-stock-flow` | 查询个股资金流向（超大单/大单/中单/小单），分析主力与散户资金动向 |
+| `rr-stock-margin` | 查询融资融券汇总（杠杆资金动向），分析市场多空情绪 |
 
 ## Research Workflow: The Spiral
 
@@ -139,10 +142,16 @@ When `--topic` is set, `rr-tushare-fetch` uses LLM to distill the report into st
 
 **Raw data verification** — validate claims with Tushare financial data:
 ```bash
-rr-stock-info --code <6位代码>                     # 公司基本面与估值
-rr-stock-daily --code <6位代码> --start 2025-01-01  # 股价走势
+rr-stock-info --code <6位代码>                     # 公司基本面与估值（不复权价格）
+rr-stock-daily --code <6位代码> --start 2025-01-01  # 股价走势（默认不复权）
+rr-stock-daily --code <6位代码> --last 30 --adj qfq  # 前复权价格（推荐用于收益率分析）
 rr-stock-fina --code <6位代码> --period 2025        # 财务报表（年报/季报）
+rr-stock-chip --code <6位代码> --last 10            # 筹码分布与胜率（套牢盘/获利盘分析）
+rr-stock-flow --code <6位代码> --last 10            # 资金流向（主力/散户动向）
+rr-stock-margin --exchange SSE --last 10           # 两融数据（杠杆资金/市场情绪）
 ```
+
+> **复权说明**: `rr-stock-info` 返回的是**不复权**的实际交易价格（`daily_basic` 接口不支持复权）。需要复权价格时用 `rr-stock-daily --adj qfq`（前复权，历史价格调整到当前可比口径）或 `--adj hfq`（后复权）。投资分析一般用前复权，看历史收益率更直观。
 
 Use raw data to cross-verify research report claims. For example, if a report says "公司首次盈利", use `rr-stock-fina` to verify the actual net income figure.
 

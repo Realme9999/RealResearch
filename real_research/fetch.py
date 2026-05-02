@@ -153,7 +153,7 @@ def main():
     args = parser.parse_args()
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.url)
     if logger:
         logger.start_step("rr-fetch", {"url": args.url, "max_length": args.max_length, "extract_depth": args.extract_depth})
 

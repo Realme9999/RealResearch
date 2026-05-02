@@ -89,7 +89,7 @@ def main():
     args = parser.parse_args()
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.query)
     if logger:
         logger.start_step("rr-search", {"query": args.query, "max_results": args.max_results, "search_depth": args.search_depth})
 

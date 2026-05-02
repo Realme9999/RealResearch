@@ -79,6 +79,9 @@ rr-detail = "real_research.detail:main"
 rr-stock-info = "real_research.stock_info:main"
 rr-stock-daily = "real_research.stock_daily:main"
 rr-stock-fina = "real_research.stock_fina:main"
+rr-stock-chip = "real_research.stock_chip:main"
+rr-stock-flow = "real_research.stock_flow:main"
+rr-stock-margin = "real_research.stock_margin:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["real_research"]

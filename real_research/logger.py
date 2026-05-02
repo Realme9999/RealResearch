@@ -219,12 +219,19 @@ def _clear_current_session():
         pass
 
 
-def get_logger() -> SessionLogger | None:
+def get_logger(
+    default_query: str | None = None,
+    bank_id: str | None = None,
+) -> SessionLogger | None:
     """Get the current session logger.
 
     Checks thread-local first, then falls back to the session file
     on disk so that CLI tools running in separate processes can
     resume the same session.
+
+    If no session exists and *default_query* is provided, a new session
+    is started automatically so that every tool call is logged without
+    requiring an explicit ``rr-log start``.
     """
     # 1. Thread-local (same process)
     logger = getattr(_state, "logger", None)
@@ -233,15 +240,17 @@ def get_logger() -> SessionLogger | None:
 
     # 2. Cross-process: read session ID from file and resume
     session_id = _load_current_session_id()
-    if session_id is None:
-        return None
+    if session_id is not None:
+        session_dir = os.path.join(SESSIONS_DIR, session_id)
+        meta_path = os.path.join(session_dir, "session.json")
+        if os.path.isfile(meta_path):
+            return resume_session(session_id)
 
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    meta_path = os.path.join(session_dir, "session.json")
-    if not os.path.isfile(meta_path):
-        return None
+    # 3. No active session — auto-start one if a query is provided
+    if default_query:
+        return start_session(query=default_query, bank_id=bank_id)
 
-    return resume_session(session_id)
+    return None
 
 
 def start_session(

@@ -1,6 +1,8 @@
 """View and manage research session logs.
 
 Usage:
+    rr-log start "<research query>"    # Start a new session (must run before spiral tools)
+    rr-log close                       # Close current session
     rr-log list                        # List all sessions
     rr-log show <session-id>           # Show session overview
     rr-log show <session-id> --step 3  # Show step detail
@@ -54,6 +56,25 @@ def _format_time(iso_str: str | None) -> str:
 
 
 # ── Commands ─────────────────────────────────────────────
+
+def cmd_start(args):
+    """Start a new research session."""
+    from .logger import start_session
+    logger = start_session(query=args.query, bank_id=args.bank)
+    print(f"Session started: {logger.session_id}")
+    print(f"Query: {args.query}")
+    if args.bank:
+        print(f"Bank: {args.bank}")
+    print(f"\nAll subsequent rr-* tool calls will be logged to this session.")
+    print(f"Run 'rr-log close' when done.")
+
+
+def cmd_close(args):
+    """Close the current session."""
+    from .logger import close_session
+    close_session(report_path=args.report)
+    print("Session closed.")
+
 
 def cmd_list(args):
     """List all research sessions."""
@@ -234,6 +255,15 @@ def main():
     )
     sub = parser.add_subparsers(dest="command")
 
+    # start
+    p_start = sub.add_parser("start", help="Start a new research session")
+    p_start.add_argument("query", help="Research query/topic")
+    p_start.add_argument("--bank", "-b", help="Memory bank ID")
+
+    # close
+    p_close = sub.add_parser("close", help="Close current session")
+    p_close.add_argument("--report", "-r", help="Path to final report file")
+
     # list
     p_list = sub.add_parser("list", help="List all sessions")
     p_list.add_argument("--limit", "-n", type=int, default=20, help="Max sessions to show")
@@ -248,7 +278,11 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "list":
+    if args.command == "start":
+        cmd_start(args)
+    elif args.command == "close":
+        cmd_close(args)
+    elif args.command == "list":
         cmd_list(args)
     elif args.command == "show":
         cmd_show(args)

@@ -118,7 +118,7 @@ def main():
         output_file = _generate_report_path(args.query, args.reports_dir)
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.query, bank_id=bank_id)
     if logger:
         logger.start_step("rr-reflect", {"query": args.query, "bank_id": bank_id, "budget": args.budget, "tags": tags, "timeout": args.timeout})
 

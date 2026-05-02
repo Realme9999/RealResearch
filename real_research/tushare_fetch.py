@@ -366,7 +366,7 @@ def main():
     args = parser.parse_args()
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.topic or args.url or args.id)
     if logger:
         logger.start_step("rr-tushare-fetch", {
             "url": args.url, "id": args.id, "max_length": args.max_length,

@@ -90,7 +90,7 @@ def main():
         sys.exit(1)
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.query, bank_id=args.bank)
     if logger:
         logger.start_step("rr-report", {"query": args.query, "bank_id": args.bank, "content_length": len(content or "")})
 

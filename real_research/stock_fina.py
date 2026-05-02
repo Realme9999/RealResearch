@@ -1,5 +1,8 @@
 """RealResearch: rr-stock-fina — 查询公司财务报表（利润表/资产负债表/现金流量表）
 
+返回指定报告期的财务数据，支持年报和季报。
+报告期格式：YYYY（年报）、YYYYQ1-Q4（季报）、YYYYMMDD。
+
 Usage:
     rr-stock-fina --code 688256 --period 2025           # 2025年报
     rr-stock-fina --code 688256 --period 2025Q3         # 2025三季报

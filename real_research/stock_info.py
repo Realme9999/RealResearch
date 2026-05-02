@@ -1,5 +1,8 @@
 """RealResearch: rr-stock-info — 查询公司基本信息与最新估值
 
+返回的是不复权的实际交易价格（daily_basic 接口不支持复权）。
+需要复权价格请用 rr-stock-daily --adj qfq。
+
 Usage:
     rr-stock-info --code 688256
     rr-stock-info --name 寒武纪

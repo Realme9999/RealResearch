@@ -554,7 +554,7 @@ async def _generate_detail(
     """Generate the detailed material package."""
     from .logger import get_logger
 
-    logger = get_logger()
+    logger = get_logger(default_query=query, bank_id=bank_id)
     if logger:
         logger.start_step("rr-detail", {
             "query": query,

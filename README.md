@@ -85,11 +85,13 @@ RealResearch 是**螺旋**的：每一轮研究都在已有知识基础上推进
 | Phase 1 | Grounding | 回忆已有知识，找到起点 | `rr-recall` |
 | Phase 2 | Gap Analysis | 分析知识缺口，制定搜索计划 | LLM 推理 |
 | Phase 3 | Deep Search | 双通道搜索（网页 + 研报） | `rr-search`, `rr-tushare-search` |
+| Phase 3.5 | Raw Data | 获取公司基本面原始数据 | `rr-stock-info`, `rr-stock-daily`, `rr-stock-fina`, `rr-stock-chip`, `rr-stock-flow` |
 | Phase 4 | Immediate Retain | 立即存储发现，不等到最后 | `rr-retain` |
 | Phase 5 | Connection Recall | 再次回忆，发现交叉关联 | `rr-recall` |
 | Phase 6 | Convergence Check | 判断继续还是收敛 | LLM 推理 |
 | Phase 7 | Reflect | 综合分析所有记忆 | `rr-reflect` |
-| Phase 8 | Final Report | 生成结构化报告 | `rr-report` |
+| Phase 8 | Detail | 生成详细素材包（事实、实体、时间线） | `rr-detail` |
+| Phase 9 | Final Report | 生成结构化报告 | `rr-report` |
 
 ### 2. 记忆引擎：Hindsight
 
@@ -206,20 +208,36 @@ Bank: crypto-markets     → 加密货币研究的所有记忆
 - `rr-route` 可以根据查询自动路由到最匹配的 Bank
 - 相关子主题可以共享同一个 Bank，便于交叉引用
 
-### 6. 全链路日志
+### 6. 全链路日志（自动记录）
 
-每次研究会话自动记录每个步骤的输入、输出、耗时、token 消耗：
+所有工具在调用时**自动创建日志 session**，无需手动开启。每个步骤的输入、输出、耗时、token 消耗都会被记录：
 
 ```
 Logs/sessions/
-├── abc123/
+├── 2026-05-02_09-23_协创数据研究/
 │   ├── session.json          # 会话元数据
-│   ├── step_001_search.json  # 第 1 步：搜索
-│   ├── step_002_retain.json  # 第 2 步：存储
-│   ├── step_003_recall.json  # 第 3 步：检索
-│   └── ...
-└── def456/
-    └── ...
+│   ├── 001_rr-retain.json    # 第 1 步：存储
+│   ├── 002_rr-search.json    # 第 2 步：搜索
+│   ├── 003_rr-retain.json    # 第 3 步：存储
+│   └── 004_rr-detail.json    # 第 4 步：生成素材包
+└── ...
+```
+
+**使用方式：**
+
+```bash
+# 自动模式（推荐）：直接使用工具，日志自动记录
+rr-search -q "..." -b my-bank
+rr-retain -c "..." -b my-bank
+
+# 手动模式：显式开启/关闭 session
+rr-log start --query "研究主题" --bank my-bank
+# ... 执行研究 ...
+rr-log close --report ./report.md
+
+# 查看日志
+rr-log list                    # 列出所有 session
+rr-log show <session-id>       # 查看 session 详情
 ```
 
 支持事后复盘：哪些搜索查询效果好、哪些研报最有价值、token 消耗分布等。
@@ -290,6 +308,8 @@ rr-env-check
 
 ## CLI 工具速查
 
+### 核心研究工具
+
 | 命令 | 功能 | 典型用法 |
 |------|------|---------|
 | `rr-search` | 网络搜索 | `rr-search -q "量子计算最新进展" -n 8` |
@@ -297,17 +317,68 @@ rr-env-check
 | `rr-retain` | 存入记忆 | `rr-retain -c "...发现..." -b ai-chips` |
 | `rr-recall` | 检索记忆 | `rr-recall -q "昇腾技术参数" -b ai-chips` |
 | `rr-reflect` | 深度反思 | `rr-reflect -q "综合分析" -b ai-chips --budget high` |
+| `rr-detail` | 生成详细素材包 | `rr-detail -q "分析主题" -b ai-chips` |
 | `rr-report` | 保存报告 | `rr-report -q "主题" -c "## 内容..."` |
 | `rr-bank` | 记忆库管理 | `rr-bank list`, `rr-bank create --id ...` |
 | `rr-route` | 智能路由 | `rr-route -q "AI芯片"` |
+
+### 研报工具
+
+| 命令 | 功能 | 典型用法 |
+|------|------|---------|
 | `rr-tushare-index` | 研报索引构建 | `rr-tushare-index --months 3` |
 | `rr-tushare-search` | 研报搜索 | `rr-tushare-search -q "半导体" --industry "电子"` |
 | `rr-tushare-fetch` | 研报蒸馏 | `rr-tushare-fetch --url "..." --topic "主题" --save ./report.md` |
-| `rr-log` | 查看研究日志 | `rr-log list`, `rr-log show <session-id>` |
+
+### 公司基本面工具
+
+| 命令 | 功能 | 典型用法 |
+|------|------|---------|
+| `rr-stock-info` | 公司基本信息 | `rr-stock-info --code 688256` 或 `--name 寒武纪` |
+| `rr-stock-daily` | 股价走势 | `rr-stock-daily --code 688256 --start 2025-01-01 --end 2025-12-31` |
+| `rr-stock-fina` | 财务报表 | `rr-stock-fina --code 688256 --period 2025` 或 `--period 2025Q3` |
+| `rr-stock-chip` | 筹码分布 | `rr-stock-chip --code 688256 --last 10` |
+| `rr-stock-flow` | 资金流向 | `rr-stock-flow --code 688256 --last 5` |
+| `rr-stock-margin` | 融资融券 | `rr-stock-margin --code 688256 --last 10` |
+
+### 日志工具
+
+| 命令 | 功能 | 典型用法 |
+|------|------|---------|
+| `rr-log` | 日志查看 | `rr-log list`, `rr-log show <session-id>` |
+| `rr-log start` | 手动开启日志 | `rr-log start --query "研究主题" --bank ai-chips` |
+| `rr-log close` | 关闭当前日志 | `rr-log close --report ./report.md` |
+
+> **自动日志记录**：所有工具在调用时会自动创建日志 session，无需手动开启。使用 `rr-log close` 关闭 session 后，日志会自动写入索引。
 
 ---
 
 ## 使用示例
+
+### 示例 1：公司深度研究（算力租赁）
+
+```bash
+# 创建研究库
+rr-bank create --id computing-power --name "算力租赁研究"
+
+# 获取公司基本面数据
+rr-stock-info --code 603629
+rr-stock-daily --code 603629 --start 2025-01-01 --end 2026-04-30
+rr-stock-fina --code 603629 --period 2025
+rr-stock-chip --code 603629 --last 10
+rr-stock-flow --code 603629 --last 5
+
+# 搜索研报并存储
+rr-tushare-search -q "算力租赁" --industry "电子" -n 10
+rr-retain -c "..." -b computing-power --context "基本面数据"
+
+# 综合分析
+rr-reflect -q "利通电子算力租赁深度研究" -b computing-power --budget high
+rr-detail -q "利通电子算力租赁深度研究" -b computing-power
+rr-report -q "利通电子深度研究报告" -c "## 报告内容..."
+```
+
+### 示例 2：行业研究（煤化工）
 
 ```bash
 # 创建研究库
@@ -325,6 +396,8 @@ rr-retain -c "..." -b coal-chem --context "Spiral 2"
 
 # 综合分析并生成报告
 rr-reflect -q "煤化工设备供应和工程服务企业分析" -b coal-chem --budget high
+rr-detail -q "煤化工设备供应和工程服务企业分析" -b coal-chem
+rr-report -q "煤化工研究报告" -c "## 报告内容..."
 ```
 
 > 更多实际研究案例，见 [EXAMPLES.md](EXAMPLES.md)——包含中国国产 AI 芯片（875 条记忆）和全球 AI 硬件（242 条记忆）两个完整研究项目的详细拆解。
@@ -398,14 +471,21 @@ RealResearch/
 │   ├── retain.py               # rr-retain（存入记忆）
 │   ├── recall.py               # rr-recall（检索记忆）
 │   ├── reflect.py              # rr-reflect（深度反思）
+│   ├── detail.py               # rr-detail（详细素材包）
 │   ├── report.py               # rr-report（保存报告）
 │   ├── bank.py                 # rr-bank（记忆库管理）
 │   ├── route.py                # rr-route（智能路由）
 │   ├── tushare_index.py        # rr-tushare-index（研报索引）
 │   ├── tushare_search.py       # rr-tushare-search（研报搜索）
 │   ├── tushare_fetch.py        # rr-tushare-fetch（研报蒸馏）
+│   ├── stock_info.py           # rr-stock-info（公司基本信息）
+│   ├── stock_daily.py          # rr-stock-daily（股价走势）
+│   ├── stock_fina.py           # rr-stock-fina（财务报表）
+│   ├── stock_chip.py           # rr-stock-chip（筹码分布）
+│   ├── stock_flow.py           # rr-stock-flow（资金流向）
+│   ├── stock_margin.py         # rr-stock-margin（融资融券）
 │   ├── log_view.py             # rr-log（日志查看）
-│   ├── logger.py               # 会话日志记录
+│   ├── logger.py               # 会话日志记录（支持自动 session）
 │   ├── env_check.py            # rr-env-check（环境检查）
 │   └── utils.py                # 共享工具
 ├── hindsightbase/              # Hindsight 引擎（git clone）

@@ -64,7 +64,7 @@ def main():
     tags = [t.strip() for t in args.tags.split(",")] if args.tags else None
 
     from .logger import get_logger
-    logger = get_logger()
+    logger = get_logger(default_query=args.context or content[:80], bank_id=bank_id)
     if logger:
         logger.start_step("rr-retain", {"bank_id": bank_id, "context": args.context, "tags": tags, "content_length": len(content or "")})
 
